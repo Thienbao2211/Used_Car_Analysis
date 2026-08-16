@@ -20,9 +20,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
-# =====================================================================================
 # CẤU HÌNH CHUNG
-# =====================================================================================
 st.set_page_config(
     page_title="Car Price Intelligence",
     page_icon="🚗",
@@ -63,15 +61,8 @@ CUSTOM_CSS = """
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-
-# =====================================================================================
 # 1. ĐỌC DỮ LIỆU
-# -------------------------------------------------------------------------------------
-# ĐÂY LÀ PHẦN DUY NHẤT BẠN CẦN TỰ ĐIỀN. Hãy thay dòng bên dưới bằng cách đọc file CSV
-# của bạn (ví dụ: pd.read_csv("used_cars.csv") hoặc đường dẫn tuyệt đối tới file).
-# Cấu trúc cột kỳ vọng: brand, model, model_year, milage, fuel_type, engine,
-# transmission, ext_col, int_col, accident, clean_title, price
-# =====================================================================================
+
 @st.cache_data(show_spinner="Đang tải dữ liệu...")
 def load_data() -> pd.DataFrame:
     # =================== ĐIỀN CÁCH ĐỌC FILE CSV CỦA BẠN VÀO ĐÂY ===================
@@ -80,9 +71,8 @@ def load_data() -> pd.DataFrame:
     return df
 
 
-# =====================================================================================
 # 2. CÁC HÀM TRÍCH XUẤT / LÀM SẠCH (giống hệt logic trong notebook)
-# =====================================================================================
+
 def extract_hp(text):
     m = re.search(r"([\d.]+)\s*HP", str(text))
     return float(m.group(1)) if m else np.nan
@@ -120,22 +110,22 @@ def clean_transmission(transmission):
 def preprocess(df_raw: pd.DataFrame):
     df = df_raw.copy()
 
-    # ---- Giá tiền: "$10,300" -> 10300 ----
+    # Giá tiền
     df["price"] = (
         df["price"].astype(str).str.replace(r"[\$,]", "", regex=True)
     )
     df["price"] = pd.to_numeric(df["price"], errors="coerce")
 
-    # ---- Số dặm: "51,000 mi." -> 51000 ----
+    #  Số dặm
     df["milage"] = (
         df["milage"].astype(str).str.replace(",", "", regex=False).str.replace("mi.", "", regex=False)
     )
     df["milage"] = pd.to_numeric(df["milage"], errors="coerce")
 
-    # ---- Tuổi xe ----
+    #  Tuổi xe 
     df["age"] = CURRENT_YEAR - df["model_year"]
 
-    # ---- Trích xuất mã lực / dung tích / số xy-lanh từ cột engine ----
+    #  Trích xuất mã lực / dung tích / số xy-lanh từ cột engine 
     df["engine_hp"] = df["engine"].apply(extract_hp)
     df["engine_liter"] = df["engine"].apply(extract_liter)
     df["engine_cylinder"] = df["engine"].apply(extract_cylinders)
@@ -145,15 +135,15 @@ def preprocess(df_raw: pd.DataFrame):
 
     df = df.drop(columns=["engine"])
 
-    # ---- Loại các dòng thiếu giá / số dặm (không thể suy luận) ----
+    #  Xóa các dòng thiếu giá / số dặm
     df = df.dropna(subset=["price", "milage", "model_year"])
     df["price"] = df["price"].astype(int)
     df["milage"] = df["milage"].astype(int)
 
-    # ---- Chuẩn hoá hộp số ----
+    #  Chuẩn hoá hộp số 
     df["transmission"] = df["transmission"].apply(clean_transmission)
 
-    # ---- Chuẩn hoá các cột phân loại còn thiếu dữ liệu ----
+    #  Chuẩn hoá các cột phân loại còn thiếu dữ liệu 
     df["fuel_type"] = df["fuel_type"].replace(["–", "not supported"], np.nan)
     df["fuel_type"] = df["fuel_type"].fillna("unknown")
     df["accident"] = df["accident"].fillna("unknown").astype(str).str.lower()
@@ -162,14 +152,14 @@ def preprocess(df_raw: pd.DataFrame):
         if col in df.columns:
             df[col] = df[col].fillna("unknown")
 
-    # ---- Loại bỏ các hàng còn giá trị null khác ----
+    #  Loại bỏ các hàng còn giá trị null khác 
     df = df.dropna(axis=0).reset_index(drop=True)
 
-    # ---- Loại outlier giá xe theo percentile 99 ----
+    #  Loại outlier giá xe theo percentile 99 
     q99 = df["price"].quantile(0.99)
     df = df[df["price"] <= q99].reset_index(drop=True)
 
-    # ---- Gom các model hiếm (< MIN_MODEL_COUNT lần) thành "Other" ----
+    #  Gom các model hiếm (< MIN_MODEL_COUNT lần) thành "Other" 
     model_counts = df["model"].value_counts()
     rare_models = model_counts[model_counts < MIN_MODEL_COUNT].index.tolist()
     df["model_grouped"] = df["model"].where(~df["model"].isin(rare_models), "Other")
@@ -177,9 +167,7 @@ def preprocess(df_raw: pd.DataFrame):
     return df, rare_models
 
 
-# =====================================================================================
-# 3. HUẤN LUYỆN MÔ HÌNH (Random Forest Regressor trên log1p(price))
-# =====================================================================================
+# 3. HUẤN LUYỆN MÔ HÌNH (Random Forest Regressor)
 @st.cache_resource(show_spinner="Đang huấn luyện mô hình Random Forest...")
 def train_model(df_clean: pd.DataFrame):
     data = df_clean.drop(columns=["model", "model_year"]).copy()
@@ -191,7 +179,7 @@ def train_model(df_clean: pd.DataFrame):
         X, y, test_size=0.2, random_state=42
     )
 
-    # ---- Target encoding cho model_grouped (fit trên tập train) ----
+    #  Target encoding cho model_grouped (fit trên tập train) 
     tmp = X_train.copy()
     tmp["price_log"] = y_train.values
     model_target_map = tmp.groupby("model_grouped")["price_log"].mean()
@@ -203,13 +191,13 @@ def train_model(df_clean: pd.DataFrame):
     X_train = X_train.drop(columns=["model_grouped"])
     X_test = X_test.drop(columns=["model_grouped"])
 
-    # ---- One-Hot Encoding cho các cột phân loại còn lại ----
+    #  One-Hot Encoding cho các cột phân loại còn lại 
     cat_cols = X_train.select_dtypes(include="object").columns.tolist()
     X_train = pd.get_dummies(X_train, columns=cat_cols, drop_first=True)
     X_test = pd.get_dummies(X_test, columns=cat_cols, drop_first=True)
     X_train, X_test = X_train.align(X_test, join="left", axis=1, fill_value=0)
 
-    # ---- Chuẩn hoá các cột số ----
+    #  Chuẩn hoá các cột số 
     numerical_cols = [
         "age", "milage", "engine_hp", "engine_liter", "engine_cylinder", "model_te",
     ]
@@ -219,7 +207,7 @@ def train_model(df_clean: pd.DataFrame):
     X_train[numerical_cols] = scaler.fit_transform(X_train[numerical_cols])
     X_test[numerical_cols] = scaler.transform(X_test[numerical_cols])
 
-    # ---- Huấn luyện Random Forest ----
+    #  Huấn luyện Random Forest 
     model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
     model.fit(X_train, y_train)
 
@@ -275,9 +263,10 @@ def predict_price(input_data: dict, rare_models: list, artifacts: dict) -> float
     return float(np.expm1(pred_log))
 
 
-# =====================================================================================
 # 4. CÁC TRANG GIAO DIỆN
-# =====================================================================================
+
+    # Trang tổng quan dữ liệu
+
 def page_overview(df_raw, df_clean):
     st.header("📊 Tổng quan bộ dữ liệu")
 
@@ -308,11 +297,12 @@ def page_overview(df_raw, df_clean):
             )
             st.plotly_chart(fig, use_container_width=True)
 
+    # Trang biểu đồ phân tích
 
 def page_charts(df):
     st.header("📈 Biểu đồ phân tích dữ liệu")
 
-    # ---------------- 1. Biểu đồ đường: giá trung bình theo năm của top 5 hãng ----------------
+        #  1. Biểu đồ đường: giá trung bình theo năm của top 5 hãng 
     st.subheader("Xu hướng giá trung bình theo năm của Top 5 hãng xe phổ biến nhất")
     top_brand = df["brand"].value_counts().head(5).index
     df_top_brand = df[df["brand"].isin(top_brand)]
@@ -328,7 +318,7 @@ def page_charts(df):
 
     col1, col2 = st.columns(2)
 
-    # ---------------- 2. Top 10 hãng xe có giá trung bình cao nhất ----------------
+        #  2. Top 10 hãng xe có giá trung bình cao nhất 
     with col1:
         st.subheader("Top 10 hãng xe có giá trung bình cao nhất")
         df_sum_brand = (
@@ -341,7 +331,7 @@ def page_charts(df):
         )
         st.plotly_chart(fig2, use_container_width=True)
 
-    # ---------------- 3. Số lượng xe vs giá trung bình (top 10 theo số lượng) ----------------
+        #  3. Số lượng xe vs giá trung bình (top 10 theo số lượng) 
     with col2:
         st.subheader("Số lượng xe & giá trung bình (Top 10 hãng phổ biến)")
         brand_stats = (
@@ -364,7 +354,7 @@ def page_charts(df):
 
     st.divider()
 
-    # ---------------- 4. Boxplot outlier ----------------
+        #  4. Boxplot outlier 
     st.subheader("Phân phối giá & số dặm đã đi (kiểm tra outlier)")
     col3, col4 = st.columns(2)
     with col3:
@@ -376,7 +366,7 @@ def page_charts(df):
 
     st.divider()
 
-    # ---------------- 5. Biểu đồ tròn ----------------
+        #  5. Biểu đồ tròn 
     st.subheader("Cơ cấu tỉ trọng dữ liệu")
     col5, col6 = st.columns(2)
     with col5:
@@ -393,7 +383,7 @@ def page_charts(df):
 
     st.divider()
 
-    # ---------------- 6. Ma trận tương quan ----------------
+        #  6. Ma trận tương quan 
     st.subheader("Mức độ tương quan giữa các đặc trưng số và giá xe")
     numeric_cols = ["price", "milage", "age", "engine_hp", "engine_liter", "engine_cylinder"]
     numeric_cols = [c for c in numeric_cols if c in df.columns]
@@ -402,6 +392,7 @@ def page_charts(df):
                      title="Ma trận tương quan (Correlation Matrix)")
     st.plotly_chart(fig8, use_container_width=True)
 
+    # Trang dự đoán giá xe
 
 def page_prediction(df, rare_models, artifacts):
     st.header("🤖 Dự đoán giá xe")
@@ -470,6 +461,7 @@ def page_prediction(df, rare_models, artifacts):
                 f"${similar['price'].mean():,.0f} (n={len(similar)})"
             )
 
+# Trang đánh giá mô hình
 
 def page_evaluation(artifacts):
     st.header("🎯 Đánh giá mô hình")
@@ -516,11 +508,9 @@ def page_evaluation(artifacts):
     )
 
 
-# =====================================================================================
-# 5. MAIN
-# =====================================================================================
+# 5. Main
 def main():
-    st.markdown('<div class="main-title">🚗 Car Price Intelligence Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">🚗 Phân tích và dự đoán giá xe cũ</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Phân tích chuyên sâu & dự đoán giá xe ô tô đã qua sử dụng bằng Machine Learning</div>', unsafe_allow_html=True)
     st.write("")
 
@@ -528,9 +518,7 @@ def main():
         df_raw = load_data()
     except Exception as e:
         st.error(
-            "⚠️ Chưa đọc được dữ liệu. Hãy mở file `app.py`, tìm phần "
-            "**'ĐIỀN CÁCH ĐỌC FILE CSV CỦA BẠN VÀO ĐÂY'** trong hàm `load_data()` "
-            "và điền đường dẫn tới file CSV của bạn."
+            "Chưa đọc được dữ liệu!"
         )
         st.code(str(e))
         st.stop()
@@ -541,7 +529,7 @@ def main():
     }
     missing_cols = required_cols - set(df_raw.columns)
     if missing_cols:
-        st.error(f"⚠️ File CSV thiếu các cột bắt buộc: {sorted(missing_cols)}")
+        st.error(f"⚠️ Lỗi file csv thiếu các cột: {sorted(missing_cols)}")
         st.stop()
 
     df_clean, rare_models = preprocess(df_raw)
