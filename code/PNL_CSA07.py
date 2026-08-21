@@ -23,7 +23,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 # CẤU HÌNH CHUNG
 st.set_page_config(
     page_title="Car Price Intelligence",
-    page_icon="🚗",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -268,7 +268,7 @@ def predict_price(input_data: dict, rare_models: list, artifacts: dict) -> float
     # Trang tổng quan dữ liệu
 
 def page_overview(df_raw, df_clean):
-    st.header("📊 Tổng quan bộ dữ liệu")
+    st.header("Tổng quan bộ dữ liệu")
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Số dòng gốc", f"{len(df_raw):,}")
@@ -278,7 +278,7 @@ def page_overview(df_raw, df_clean):
 
     st.divider()
 
-    tab1, tab2, tab3 = st.tabs(["🔎 Dữ liệu mẫu", "🧾 Thống kê mô tả", "❗ Giá trị thiếu (dữ liệu gốc)"])
+    tab1, tab2, tab3 = st.tabs(["Dữ liệu mẫu", "Thống kê mô tả", "Giá trị thiếu (dữ liệu gốc)"])
     with tab1:
         st.dataframe(df_clean.head(20), use_container_width=True)
     with tab2:
@@ -300,7 +300,7 @@ def page_overview(df_raw, df_clean):
     # Trang biểu đồ phân tích
 
 def page_charts(df):
-    st.header("📈 Biểu đồ phân tích dữ liệu")
+    st.header("Biểu đồ phân tích dữ liệu")
 
         #  1. Biểu đồ đường: giá trung bình theo năm của top 5 hãng 
     st.subheader("Xu hướng giá trung bình theo năm của Top 5 hãng xe phổ biến nhất")
@@ -319,6 +319,7 @@ def page_charts(df):
     col1, col2 = st.columns(2)
 
         #  2. Top 10 hãng xe có giá trung bình cao nhất 
+
     with col1:
         st.subheader("Top 10 hãng xe có giá trung bình cao nhất")
         df_sum_brand = (
@@ -332,6 +333,7 @@ def page_charts(df):
         st.plotly_chart(fig2, use_container_width=True)
 
         #  3. Số lượng xe vs giá trung bình (top 10 theo số lượng) 
+
     with col2:
         st.subheader("Số lượng xe & giá trung bình (Top 10 hãng phổ biến)")
         brand_stats = (
@@ -355,6 +357,7 @@ def page_charts(df):
     st.divider()
 
         #  4. Boxplot outlier 
+
     st.subheader("Phân phối giá & số dặm đã đi (kiểm tra outlier)")
     col3, col4 = st.columns(2)
     with col3:
@@ -367,6 +370,7 @@ def page_charts(df):
     st.divider()
 
         #  5. Biểu đồ tròn 
+
     st.subheader("Cơ cấu tỉ trọng dữ liệu")
     col5, col6 = st.columns(2)
     with col5:
@@ -384,6 +388,7 @@ def page_charts(df):
     st.divider()
 
         #  6. Ma trận tương quan 
+        
     st.subheader("Mức độ tương quan giữa các đặc trưng số và giá xe")
     numeric_cols = ["price", "milage", "age", "engine_hp", "engine_liter", "engine_cylinder"]
     numeric_cols = [c for c in numeric_cols if c in df.columns]
@@ -395,7 +400,7 @@ def page_charts(df):
     # Trang dự đoán giá xe
 
 def page_prediction(df, rare_models, artifacts):
-    st.header("🤖 Dự đoán giá xe")
+    st.header("Dự đoán giá xe")
     st.caption("Nhập thông tin xe để mô hình Random Forest dự đoán mức giá phù hợp.")
 
     with st.form("prediction_form"):
@@ -464,7 +469,7 @@ def page_prediction(df, rare_models, artifacts):
 # Trang đánh giá mô hình
 
 def page_evaluation(artifacts):
-    st.header("🎯 Đánh giá mô hình")
+    st.header("Đánh giá mô hình")
 
     m = artifacts["metrics"]
     c1, c2, c3 = st.columns(3)
@@ -510,7 +515,7 @@ def page_evaluation(artifacts):
 
 # 5. Main
 def main():
-    st.markdown('<div class="main-title">🚗 Phân tích và dự đoán giá xe cũ</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">Phân tích và dự đoán giá xe cũ</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Phân tích chuyên sâu & dự đoán giá xe ô tô đã qua sử dụng bằng Machine Learning</div>', unsafe_allow_html=True)
     st.write("")
 
@@ -529,7 +534,7 @@ def main():
     }
     missing_cols = required_cols - set(df_raw.columns)
     if missing_cols:
-        st.error(f"⚠️ Lỗi file csv thiếu các cột: {sorted(missing_cols)}")
+        st.error(f"Lỗi file csv thiếu các cột: {sorted(missing_cols)}")
         st.stop()
 
     df_clean, rare_models = preprocess(df_raw)
@@ -538,7 +543,7 @@ def main():
     st.sidebar.title("Điều hướng")
     page = st.sidebar.radio(
         "Chọn trang",
-        ["📊 Tổng quan dữ liệu", "📈 Biểu đồ phân tích", "🤖 Dự đoán giá xe", "🎯 Đánh giá mô hình"],
+        ["Tổng quan dữ liệu", "Biểu đồ phân tích", "Dự đoán giá xe", "Đánh giá mô hình"],
         label_visibility="collapsed",
     )
     st.sidebar.divider()
@@ -546,11 +551,11 @@ def main():
     st.sidebar.metric("R² của mô hình", f"{artifacts['metrics']['R2']:.3f}")
     st.sidebar.caption("Model: Random Forest Regressor · 100 cây")
 
-    if page == "📊 Tổng quan dữ liệu":
+    if page == "Tổng quan dữ liệu":
         page_overview(df_raw, df_clean)
-    elif page == "📈 Biểu đồ phân tích":
+    elif page == "Biểu đồ phân tích":
         page_charts(df_clean)
-    elif page == "🤖 Dự đoán giá xe":
+    elif page == "Dự đoán giá xe":
         page_prediction(df_clean, rare_models, artifacts)
     else:
         page_evaluation(artifacts)
